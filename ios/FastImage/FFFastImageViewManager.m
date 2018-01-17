@@ -36,5 +36,14 @@ RCT_EXPORT_METHOD(preload:(nonnull NSArray<FFFastImageSource *> *)sources)
     [[SDWebImagePrefetcher sharedImagePrefetcher] prefetchURLs:urls];
 }
 
+RCT_EXPORT_METHOD(setImage:(nonnull NSString *)localPath key:(nonnull NSString *)key) {
+    SDWebImageManager *imageManager = [SDWebImageManager sharedManager];
+    NSData *imageData = [[NSData alloc] initWithContentsOfFile:localPath];
+    if (imageData) {
+        NSLog(@"Storing the image at %@ in the cache at key %@", localPath, key);
+        [[imageManager imageCache] storeImageDataToDisk:imageData forKey:key];
+    }
+}
+
 @end
 
