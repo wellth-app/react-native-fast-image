@@ -7,6 +7,7 @@ import android.os.Looper;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.GlideBuilder;
 import com.bumptech.glide.integration.okhttp3.OkHttpUrlLoader;
+import com.bumptech.glide.load.engine.cache.LruResourceCache;
 import com.bumptech.glide.load.model.GlideUrl;
 import com.bumptech.glide.module.GlideModule;
 
@@ -29,8 +30,19 @@ import okio.Source;
 
 public class OkHttpProgressGlideModule implements GlideModule {
 
+    private static final int CACHE_SIZE = 10000000;
+
+    private static LruResourceCache cache = new LruResourceCache(CACHE_SIZE);
+
+    public static LruResourceCache getCache() {
+        return cache;
+    }
+
     @Override
-    public void applyOptions(Context context, GlideBuilder builder) { }
+    public void applyOptions(Context context, GlideBuilder builder) {
+        // Set the custom cache
+        builder.setMemoryCache(cache);
+    }
 
     @Override
     public void registerComponents(Context context, Glide glide) {
