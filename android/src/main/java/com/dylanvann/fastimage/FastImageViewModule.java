@@ -8,7 +8,11 @@ import android.graphics.drawable.Drawable;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.Priority;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.engine.cache.LruResourceCache;
 import com.bumptech.glide.load.model.GlideUrl;
+import com.bumptech.glide.load.resource.drawable.GlideDrawable;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.target.Target;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
@@ -50,5 +54,33 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
                 }
             }
         });
+    }
+
+    @ReactMethod
+    public void setImage(final String localPath, final String cacheKey) {
+        final Activity activity = getCurrentActivity();
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                final GlideUrl localFilePath = new GlideUrl(localPath);
+                Glide.with(activity.getApplicationContext())
+                        .load(localFilePath)
+                        .placeholder(TRANSPARENT_DRAWABLE)
+                        .diskCacheStrategy(DiskCacheStrategy.NONE)
+                        .listener(new RequestListener<GlideUrl, GlideDrawable>() {
+                            @Override
+                            public boolean onException(Exception e, GlideUrl model, Target<GlideDrawable> target, boolean isFirstResource) {
+                                return false;
+                            }
+
+                            @Override
+                            public boolean onResourceReady(GlideDrawable resource, GlideUrl model, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
+                                OkHttpProgressGlideModule
+                                        .getCache()
+                                        .put(cacheKey, resource);
+
+                                return false;
+                            }
+                        });
     }
 }
