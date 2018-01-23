@@ -30,6 +30,10 @@ import okio.ForwardingSource;
 import okio.Okio;
 import okio.Source;
 
+/*
+ *  A facade class which grabs the disk cache when it's built by the factory and updates the static
+ *  value on the `OkHttpProgressGlideModule`.
+ */
 class CustomDiskCacheFactory implements DiskCache.Factory {
     private final DiskCache.Factory factory;
 
@@ -50,6 +54,7 @@ public class OkHttpProgressGlideModule implements GlideModule {
 
     private static LruResourceCache cache = new LruResourceCache(CACHE_SIZE);
     static DiskCache diskCache;
+
     public static LruResourceCache getMemoryCache() {
         return cache;
     }

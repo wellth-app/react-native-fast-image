@@ -83,7 +83,8 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
                         .load(localFilePath)
                         .asBitmap()
                         .placeholder(TRANSPARENT_DRAWABLE)
-                        .diskCacheStrategy(DiskCacheStrategy.NONE)
+                        // Ensure that the image is loaded and cached for the file path
+                        .diskCacheStrategy(DiskCacheStrategy.SOURCE)
                         .listener(new RequestListener<GlideUrl, Bitmap>() {
                             @Override
                             public boolean onException(Exception e, GlideUrl model, Target<Bitmap> target, boolean isFirstResource) {
