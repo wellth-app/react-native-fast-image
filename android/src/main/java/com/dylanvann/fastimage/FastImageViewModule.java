@@ -1,23 +1,36 @@
 package com.dylanvann.fastimage;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.Priority;
+import com.bumptech.glide.load.Key;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.engine.cache.DiskCache;
 import com.bumptech.glide.load.engine.cache.LruResourceCache;
 import com.bumptech.glide.load.model.GlideUrl;
+import com.bumptech.glide.load.resource.bitmap.BitmapEncoder;
+import com.bumptech.glide.load.resource.bitmap.BitmapResource;
 import com.bumptech.glide.load.resource.drawable.GlideDrawable;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
+import com.bumptech.glide.signature.StringSignature;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 
 class FastImageViewModule extends ReactContextBaseJavaModule {
 
@@ -68,19 +81,34 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
                 final GlideUrl localFilePath = new GlideUrl(localPath);
                 Glide.with(activity.getApplicationContext())
                         .load(localFilePath)
+                        .asBitmap()
                         .placeholder(TRANSPARENT_DRAWABLE)
                         .diskCacheStrategy(DiskCacheStrategy.NONE)
-                        .listener(new RequestListener<GlideUrl, GlideDrawable>() {
+                        .listener(new RequestListener<GlideUrl, Bitmap>() {
                             @Override
-                            public boolean onException(Exception e, GlideUrl model, Target<GlideDrawable> target, boolean isFirstResource) {
+                            public boolean onException(Exception e, GlideUrl model, Target<Bitmap> target, boolean isFirstResource) {
                                 return false;
                             }
 
                             @Override
-                            public boolean onResourceReady(GlideDrawable resource, GlideUrl model, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
+                            public boolean onResourceReady(final Bitmap resource, GlideUrl model, Target<Bitmap> target, boolean isFromMemoryCache, boolean isFirstResource) {
+                                Key key = new StringSignature(cacheKey);
                                 OkHttpProgressGlideModule
-                                        .getCache()
-                                        .put(cacheKey, resource);
+                                        .getDiskCache()
+                                        .put(key, new DiskCache.Writer() {
+                                            @TargetApi(Build.VERSION_CODES.KITKAT)
+                                            @Override
+                                            public boolean write(File file) {
+                                                try (OutputStream outputStream = new FileOutputStream(file)) {
+                                                    BitmapResource bitmap = BitmapResource.obtain(resource, null);
+                                                    new BitmapEncoder().encode(bitmap, outputStream);
+                                                    return true;
+                                                } catch (IOException exception) {
+                                                    exception.printStackTrace();
+                                                    return false;
+                                                }
+                                            }
+                                        });
 
                                 return false;
                             }
