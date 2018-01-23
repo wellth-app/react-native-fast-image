@@ -56,6 +56,9 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
         });
     }
 
+    /*
+     *  Load the image at `localPath` into the cache at `cacheKey`.
+     */
     @ReactMethod
     public void setImage(final String localPath, final String cacheKey) {
         final Activity activity = getCurrentActivity();
@@ -81,6 +84,9 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
 
                                 return false;
                             }
-                        });
+                        })
+                        .preload();
+            }
+        });
     }
 }
