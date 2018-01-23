@@ -88,28 +88,30 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
                         .listener(new RequestListener<GlideUrl, Bitmap>() {
                             @Override
                             public boolean onException(Exception e, GlideUrl model, Target<Bitmap> target, boolean isFirstResource) {
+                                e.printStackTrace();
                                 return false;
                             }
 
                             @Override
                             public boolean onResourceReady(final Bitmap resource, GlideUrl model, Target<Bitmap> target, boolean isFromMemoryCache, boolean isFirstResource) {
                                 Key key = new StringSignature(cacheKey);
-                                OkHttpProgressGlideModule
-                                        .getDiskCache()
-                                        .put(key, new DiskCache.Writer() {
-                                            @TargetApi(Build.VERSION_CODES.KITKAT)
-                                            @Override
-                                            public boolean write(File file) {
-                                                try (OutputStream outputStream = new FileOutputStream(file)) {
-                                                    BitmapResource bitmap = BitmapResource.obtain(resource, null);
-                                                    new BitmapEncoder().encode(bitmap, outputStream);
-                                                    return true;
-                                                } catch (IOException exception) {
-                                                    exception.printStackTrace();
-                                                    return false;
-                                                }
-                                            }
-                                        });
+                                DiskCache cache = OkHttpProgressGlideModule.getDiskCache();
+
+                                cache
+                                    .put(key, new DiskCache.Writer() {
+                                        @TargetApi(Build.VERSION_CODES.KITKAT)
+                                        @Override
+                                        public boolean write(File file) {
+                                        try (OutputStream outputStream = new FileOutputStream(file)) {
+                                            BitmapResource bitmap = BitmapResource.obtain(resource, null);
+                                            new BitmapEncoder().encode(bitmap, outputStream);
+                                            return true;
+                                        } catch (IOException exception) {
+                                            exception.printStackTrace();
+                                            return false;
+                                        }
+                                        }
+                                    });
 
                                 return false;
                             }
