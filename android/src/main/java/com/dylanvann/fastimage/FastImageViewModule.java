@@ -18,6 +18,7 @@ import com.bumptech.glide.load.model.GlideUrl;
 import com.bumptech.glide.load.resource.bitmap.BitmapEncoder;
 import com.bumptech.glide.load.resource.bitmap.BitmapResource;
 import com.bumptech.glide.load.resource.drawable.GlideDrawable;
+import com.bumptech.glide.request.Request;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
 import com.bumptech.glide.signature.StringSignature;
@@ -35,34 +36,35 @@ import java.io.OutputStream;
 class FastImageViewModule extends ReactContextBaseJavaModule {
 
     private static final String REACT_CLASS = "FastImageView";
+    private static RequestListener<String, Bitmap> localFileCacheListener(final String cacheKey) {
+        return new RequestListener<String, Bitmap>() {
+            @Override
+            public boolean onException(Exception e, String model, Target<Bitmap> target, boolean isFirstResource) {
+                e.printStackTrace();
+                return false;
+            }
 
-    private static final RequestListener<String, Bitmap> LocalFileCacheListener = new RequestListener<String, Bitmap>() {
-        @Override
-        public boolean onException(Exception e, String model, Target<Bitmap> target, boolean isFirstResource) {
-            e.printStackTrace();
-            return false;
-        }
-
-        @Override
-        public boolean onResourceReady(final Bitmap resource, String model, Target<Bitmap> target, boolean isFromMemoryCache, boolean isFirstResource) {
-            Key key = new StringSignature(cacheKey);
-            OkHttpProgressGlideModule.getDiskCache()
-                    .put(key, new DiskCache.Writer() {
-                        @TargetApi(Build.VERSION_CODES.KITKAT)
-                        @Override
-                        public boolean write(File file) {
-                            try (OutputStream outputStream = new FileOutputStream(file)) {
-                                BitmapResource bitmap = BitmapResource.obtain(resource, null);
-                                new BitmapEncoder().encode(bitmap, outputStream);
-                                return true;
-                            } catch (IOException exception) {
-                                exception.printStackTrace();
-                                return false;
+            @Override
+            public boolean onResourceReady(final Bitmap resource, String model, Target<Bitmap> target, boolean isFromMemoryCache, boolean isFirstResource) {
+                Key key = new StringSignature(cacheKey);
+                OkHttpProgressGlideModule.getDiskCache()
+                        .put(key, new DiskCache.Writer() {
+                            @TargetApi(Build.VERSION_CODES.KITKAT)
+                            @Override
+                            public boolean write(File file) {
+                                try (OutputStream outputStream = new FileOutputStream(file)) {
+                                    BitmapResource bitmap = BitmapResource.obtain(resource, null);
+                                    new BitmapEncoder().encode(bitmap, outputStream);
+                                    return true;
+                                } catch (IOException exception) {
+                                    exception.printStackTrace();
+                                    return false;
+                                }
                             }
-                        }
-                    });
-            return false;
-        }
+                        });
+                return false;
+            }
+        };
     }
 
     FastImageViewModule(ReactApplicationContext reactContext) {
@@ -113,7 +115,7 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
                 .placeholder(TRANSPARENT_DRAWABLE)
                 // Ensure that the image is loaded and cached for the file path
                 .diskCacheStrategy(DiskCacheStrategy.SOURCE)
-                .listener(LocalFileCacheListener)
+                .listener(localFileCacheListener(cacheKey))
                 .preload();
             }
         });
