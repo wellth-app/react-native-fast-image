@@ -76,7 +76,7 @@ FastImage.preload = sources => {
   FastImageViewNativeModule.preload(sources)
 }
 
-/// Sets an image source for the key. Loads it if necessary.
+/// Sets an image source for the key.
 FastImage.setImage = (source, key) => {
   FastImageViewNativeModule.setImage(source, key)
 }

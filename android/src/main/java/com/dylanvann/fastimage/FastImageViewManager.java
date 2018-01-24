@@ -59,47 +59,67 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
         return new ImageViewWithUrl(reactContext);
     }
 
-    private static RequestListener<GlideUrl, GlideDrawable> LISTENER = new RequestListener<GlideUrl, GlideDrawable>() {
-        @Override
-        public boolean onException(
-                Exception e,
-                GlideUrl uri,
-                Target<GlideDrawable> target,
-                boolean isFirstResource
-        ) {
-            OkHttpProgressGlideModule.forget(uri.toStringUrl());
-            if (!(target instanceof ImageViewTarget)) {
-                return false;
-            }
-            ImageViewWithUrl view = (ImageViewWithUrl) ((ImageViewTarget) target).getView();
-            ThemedReactContext context = (ThemedReactContext) view.getContext();
-            RCTEventEmitter eventEmitter = context.getJSModule(RCTEventEmitter.class);
-            int viewId = view.getId();
-            eventEmitter.receiveEvent(viewId, REACT_ON_ERROR_EVENT, new WritableNativeMap());
-            eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_END_EVENT, new WritableNativeMap());
+    private static boolean drawableListenerException(String uri, Target<GlideDrawable> target, Exception exception) {
+        OkHttpProgressGlideModule.forget(uri);
+        if (!(target instanceof ImageViewTarget)) {
+            return false;
+        }
+        ImageViewWithUrl view = (ImageViewWithUrl) ((ImageViewTarget) target).getView();
+        ThemedReactContext context = (ThemedReactContext) view.getContext();
+        RCTEventEmitter eventEmitter = context.getJSModule(RCTEventEmitter.class);
+        int viewId = view.getId();
+
+        WritableNativeMap errorMap = new WritableNativeMap();
+        errorMap.putString("uri", uri);
+        errorMap.putString("localizedMessage", exception.getLocalizedMessage());
+        errorMap.putString("message", exception.getMessage());
+        errorMap.putString("string", exception.toString());
+
+        eventEmitter.receiveEvent(viewId, REACT_ON_ERROR_EVENT, errorMap);
+        eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_END_EVENT, new WritableNativeMap());
+
+        return false;
+    }
+
+    private static boolean drawableListenerReady(Target<GlideDrawable> target) {
+        if (!(target instanceof ImageViewTarget)) {
             return false;
         }
 
+        ImageViewWithUrl view = (ImageViewWithUrl) ((ImageViewTarget) target).getView();
+        ThemedReactContext context = (ThemedReactContext) view.getContext();
+        RCTEventEmitter eventEmitter = context.getJSModule(RCTEventEmitter.class);
+
+        int viewId = view.getId();
+        eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_EVENT, new WritableNativeMap());
+        eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_END_EVENT, new WritableNativeMap());
+
+        return false;
+    }
+
+    private static RequestListener<GlideUrl, GlideDrawable> NetworkListener = new RequestListener<GlideUrl, GlideDrawable>() {
         @Override
-        public boolean onResourceReady(
-                GlideDrawable resource,
-                GlideUrl uri,
-                Target<GlideDrawable> target,
-                boolean isFromMemoryCache,
-                boolean isFirstResource
-        ) {
-            if (!(target instanceof ImageViewTarget)) {
-                return false;
-            }
-            ImageViewWithUrl view = (ImageViewWithUrl) ((ImageViewTarget) target).getView();
-            ThemedReactContext context = (ThemedReactContext) view.getContext();
-            RCTEventEmitter eventEmitter = context.getJSModule(RCTEventEmitter.class);
-            int viewId = view.getId();
-            eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_EVENT, new WritableNativeMap());
-            eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_END_EVENT, new WritableNativeMap());
-            return false;
+        public boolean onException(Exception e, GlideUrl uri, Target<GlideDrawable> target, boolean isFirstResource) {
+            return drawableListenerException(uri.toStringUrl(), target, e);
+        }
+
+        @Override
+        public boolean onResourceReady(GlideDrawable resource, GlideUrl uri, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
+            return drawableListenerReady(target);
         }
     };
+
+    private static RequestListener<String, GlideDrawable> LocalPathListener = new RequestListener<String, GlideDrawable>() {
+        @Override
+        public boolean onException(Exception e, String model, Target<GlideDrawable> target, boolean isFirstResource) {
+            return drawableListenerException(model, target, e);
+        }
+
+        @Override
+        public boolean onResourceReady(GlideDrawable resource, String model, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
+            return drawableListenerReady(target);
+        }
+    }
 
     @ReactProp(name = "source")
     public void setSrc(ImageViewWithUrl view, @Nullable ReadableMap source) {
@@ -139,14 +159,25 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
         int viewId = view.getId();
         eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_START_EVENT, new WritableNativeMap());
 
-        Glide
-                .with(view.getContext().getApplicationContext())
-                .load(glideUrl)
-                .dontTransform()
-                .priority(priority)
-                .placeholder(TRANSPARENT_DRAWABLE)
-                .listener(LISTENER)
-                .into(view);
+        if (key.startsWith("http")) {
+            Glide
+                    .with(view.getContext().getApplicationContext())
+                    .load(glideUrl)
+                    .dontTransform()
+                    .priority(priority)
+                    .placeholder(TRANSPARENT_DRAWABLE)
+                    .listener(NetworkListener)
+                    .into(view);
+        } else {
+            Glide
+                    .with(view.getContext().getApplicationContext())
+                    .load(key)
+                    .dontTransform()
+                    .priority(priority)
+                    .placeholder(TRANSPARENT_DRAWABLE)
+                    .listener(LocalPathListener)
+                    .into(view);
+        }
     }
 
     @ReactProp(name = "resizeMode")

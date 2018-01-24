@@ -36,6 +36,35 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
 
     private static final String REACT_CLASS = "FastImageView";
 
+    private static final RequestListener<String, Bitmap> LocalFileCacheListener = new RequestListener<String, Bitmap>() {
+        @Override
+        public boolean onException(Exception e, String model, Target<Bitmap> target, boolean isFirstResource) {
+            e.printStackTrace();
+            return false;
+        }
+
+        @Override
+        public boolean onResourceReady(final Bitmap resource, String model, Target<Bitmap> target, boolean isFromMemoryCache, boolean isFirstResource) {
+            Key key = new StringSignature(cacheKey);
+            OkHttpProgressGlideModule.getDiskCache()
+                    .put(key, new DiskCache.Writer() {
+                        @TargetApi(Build.VERSION_CODES.KITKAT)
+                        @Override
+                        public boolean write(File file) {
+                            try (OutputStream outputStream = new FileOutputStream(file)) {
+                                BitmapResource bitmap = BitmapResource.obtain(resource, null);
+                                new BitmapEncoder().encode(bitmap, outputStream);
+                                return true;
+                            } catch (IOException exception) {
+                                exception.printStackTrace();
+                                return false;
+                            }
+                        }
+                    });
+            return false;
+        }
+    }
+
     FastImageViewModule(ReactApplicationContext reactContext) {
         super(reactContext);
     }
@@ -78,44 +107,13 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
         activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                final GlideUrl localFilePath = new GlideUrl(localPath);
                 Glide.with(activity.getApplicationContext())
-                        .load(localFilePath)
+                        .load(localPath)
                         .asBitmap()
                         .placeholder(TRANSPARENT_DRAWABLE)
                         // Ensure that the image is loaded and cached for the file path
                         .diskCacheStrategy(DiskCacheStrategy.SOURCE)
-                        .listener(new RequestListener<GlideUrl, Bitmap>() {
-                            @Override
-                            public boolean onException(Exception e, GlideUrl model, Target<Bitmap> target, boolean isFirstResource) {
-                                e.printStackTrace();
-                                return false;
-                            }
-
-                            @Override
-                            public boolean onResourceReady(final Bitmap resource, GlideUrl model, Target<Bitmap> target, boolean isFromMemoryCache, boolean isFirstResource) {
-                                Key key = new StringSignature(cacheKey);
-                                DiskCache cache = OkHttpProgressGlideModule.getDiskCache();
-
-                                cache
-                                    .put(key, new DiskCache.Writer() {
-                                        @TargetApi(Build.VERSION_CODES.KITKAT)
-                                        @Override
-                                        public boolean write(File file) {
-                                        try (OutputStream outputStream = new FileOutputStream(file)) {
-                                            BitmapResource bitmap = BitmapResource.obtain(resource, null);
-                                            new BitmapEncoder().encode(bitmap, outputStream);
-                                            return true;
-                                        } catch (IOException exception) {
-                                            exception.printStackTrace();
-                                            return false;
-                                        }
-                                        }
-                                    });
-
-                                return false;
-                            }
-                        })
+                        .listener(LocalFileCacheListener)
                         .preload();
             }
         });
