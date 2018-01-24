@@ -119,7 +119,7 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
         public boolean onResourceReady(GlideDrawable resource, String model, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
             return drawableListenerReady(target);
         }
-    }
+    };
 
     @ReactProp(name = "source")
     public void setSrc(ImageViewWithUrl view, @Nullable ReadableMap source) {

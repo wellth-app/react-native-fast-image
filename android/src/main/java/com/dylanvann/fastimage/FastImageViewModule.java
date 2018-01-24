@@ -107,14 +107,14 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
         activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Glide.with(activity.getApplicationContext())
-                        .load(localPath)
-                        .asBitmap()
-                        .placeholder(TRANSPARENT_DRAWABLE)
-                        // Ensure that the image is loaded and cached for the file path
-                        .diskCacheStrategy(DiskCacheStrategy.SOURCE)
-                        .listener(LocalFileCacheListener)
-                        .preload();
+            Glide.with(activity.getApplicationContext())
+                .load(localPath)
+                .asBitmap()
+                .placeholder(TRANSPARENT_DRAWABLE)
+                // Ensure that the image is loaded and cached for the file path
+                .diskCacheStrategy(DiskCacheStrategy.SOURCE)
+                .listener(LocalFileCacheListener)
+                .preload();
             }
         });
     }
