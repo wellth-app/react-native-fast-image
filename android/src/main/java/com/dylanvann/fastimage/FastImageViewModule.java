@@ -36,6 +36,7 @@ import java.io.OutputStream;
 class FastImageViewModule extends ReactContextBaseJavaModule {
 
     private static final String REACT_CLASS = "FastImageView";
+
     private static RequestListener<String, Bitmap> localFileCacheListener(final String cacheKey) {
         return new RequestListener<String, Bitmap>() {
             @Override
@@ -46,22 +47,24 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
 
             @Override
             public boolean onResourceReady(final Bitmap resource, String model, Target<Bitmap> target, boolean isFromMemoryCache, boolean isFirstResource) {
-                Key key = new StringSignature(cacheKey);
+                GlideUrl cacheKeyUrl = new GlideUrl(cacheKey);
+
                 OkHttpProgressGlideModule.getDiskCache()
-                        .put(key, new DiskCache.Writer() {
-                            @TargetApi(Build.VERSION_CODES.KITKAT)
-                            @Override
-                            public boolean write(File file) {
-                                try (OutputStream outputStream = new FileOutputStream(file)) {
-                                    BitmapResource bitmap = BitmapResource.obtain(resource, null);
-                                    new BitmapEncoder().encode(bitmap, outputStream);
-                                    return true;
-                                } catch (IOException exception) {
-                                    exception.printStackTrace();
-                                    return false;
-                                }
-                            }
-                        });
+                    .put(new StringSignature(cacheKeyUrl.getCacheKey()), new DiskCache.Writer() {
+                        @TargetApi(Build.VERSION_CODES.KITKAT)
+                        @Override
+                        public boolean write(File file) {
+                        try (OutputStream outputStream = new FileOutputStream(file)) {
+                            BitmapResource bitmap = BitmapResource.obtain(resource, null);
+                            new BitmapEncoder().encode(bitmap, outputStream);
+                            outputStream.close();
+                            return true;
+                        } catch (IOException exception) {
+                            exception.printStackTrace();
+                            return false;
+                        }
+                        }
+                    });
                 return false;
             }
         };
@@ -84,18 +87,18 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
         activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                for (int i = 0; i < sources.size(); i++) {
-                    final ReadableMap source = sources.getMap(i);
-                    final GlideUrl glideUrl = FastImageViewConverter.glideUrl(source);
-                    final Priority priority = FastImageViewConverter.priority(source);
-                    Glide
-                            .with(activity.getApplicationContext())
-                            .load(glideUrl)
-                            .priority(priority)
-                            .placeholder(TRANSPARENT_DRAWABLE)
-                            .diskCacheStrategy(DiskCacheStrategy.SOURCE)
-                            .preload();
-                }
+            for (int i = 0; i < sources.size(); i++) {
+                final ReadableMap source = sources.getMap(i);
+                final GlideUrl glideUrl = FastImageViewConverter.glideUrl(source);
+                final Priority priority = FastImageViewConverter.priority(source);
+                Glide
+                    .with(activity.getApplicationContext())
+                    .load(glideUrl)
+                    .priority(priority)
+                    .placeholder(TRANSPARENT_DRAWABLE)
+                    .diskCacheStrategy(DiskCacheStrategy.SOURCE)
+                    .preload();
+            }
             }
         });
     }
