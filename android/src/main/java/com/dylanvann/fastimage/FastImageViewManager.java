@@ -1,11 +1,9 @@
 package com.dylanvann.fastimage;
 
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
-import android.net.Network;
 import android.widget.ImageView;
 
 import com.bumptech.glide.Glide;
@@ -13,7 +11,6 @@ import com.bumptech.glide.Priority;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.load.model.GlideUrl;
 import com.bumptech.glide.load.resource.drawable.GlideDrawable;
-import com.bumptech.glide.request.Request;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.ImageViewTarget;
 import com.bumptech.glide.request.target.Target;
@@ -125,18 +122,6 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
         }
     };
 
-    private static RequestListener<String, GlideDrawable> LocalPlaceholderListener = new RequestListener<String, GlideDrawable>() {
-        @Override
-        public boolean onException(Exception e, String model, Target<GlideDrawable> target, boolean isFirstResource) {
-            return drawableListenerException(model, target, e);
-        }
-
-        @Override
-        public boolean onResourceReady(GlideDrawable resource, String model, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
-            return drawableListenerReady(target);
-        }
-    };
-
     @ReactProp(name = "source")
     public void setSrc(ImageViewWithUrl view, @Nullable ReadableMap source) {
         if (source == null) {
@@ -158,7 +143,7 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
         final Priority priority = FastImageViewConverter.priority(source);
 
         // Get the placeholder.
-        String placeholderPath = FastImageViewManager.placeholder(source);
+        String placeholderPath = FastImageViewConverter.placeholder(source);
 
         // Cancel existing request.
         Glide.clear(view);
