@@ -21,6 +21,7 @@ import com.bumptech.glide.load.resource.drawable.GlideDrawable;
 import com.bumptech.glide.request.Request;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.target.Target;
+import com.bumptech.glide.signature.MediaStoreSignature;
 import com.bumptech.glide.signature.StringSignature;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -36,39 +37,6 @@ import java.io.OutputStream;
 class FastImageViewModule extends ReactContextBaseJavaModule {
 
     private static final String REACT_CLASS = "FastImageView";
-
-    private static RequestListener<String, Bitmap> localFileCacheListener(final String cacheKey) {
-        return new RequestListener<String, Bitmap>() {
-            @Override
-            public boolean onException(Exception e, String model, Target<Bitmap> target, boolean isFirstResource) {
-                e.printStackTrace();
-                return false;
-            }
-
-            @Override
-            public boolean onResourceReady(final Bitmap resource, String model, Target<Bitmap> target, boolean isFromMemoryCache, boolean isFirstResource) {
-                GlideUrl cacheKeyUrl = new GlideUrl(cacheKey);
-
-                OkHttpProgressGlideModule.getDiskCache()
-                    .put(new StringSignature(cacheKeyUrl.getCacheKey()), new DiskCache.Writer() {
-                        @TargetApi(Build.VERSION_CODES.KITKAT)
-                        @Override
-                        public boolean write(File file) {
-                        try (OutputStream outputStream = new FileOutputStream(file)) {
-                            BitmapResource bitmap = BitmapResource.obtain(resource, null);
-                            new BitmapEncoder().encode(bitmap, outputStream);
-                            outputStream.close();
-                            return true;
-                        } catch (IOException exception) {
-                            exception.printStackTrace();
-                            return false;
-                        }
-                        }
-                    });
-                return false;
-            }
-        };
-    }
 
     FastImageViewModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -103,24 +71,10 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
         });
     }
 
-    /*
-     *  Load the image at `localPath` into the cache at `cacheKey`.
+    /**
+     *  Used in iOS to set the image in the cache for a certain key. Glide isn't as clear cut
+     *  and hides away cache access, so this is a no-op.
      */
     @ReactMethod
-    public void setImage(final String localPath, final String cacheKey) {
-        final Activity activity = getCurrentActivity();
-        activity.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-            Glide.with(activity.getApplicationContext())
-                .load(localPath)
-                .asBitmap()
-                .placeholder(TRANSPARENT_DRAWABLE)
-                // Ensure that the image is loaded and cached for the file path
-                .diskCacheStrategy(DiskCacheStrategy.SOURCE)
-                .listener(localFileCacheListener(cacheKey))
-                .preload();
-            }
-        });
-    }
+    public void setImage(String localPath, String cacheKey) {}
 }

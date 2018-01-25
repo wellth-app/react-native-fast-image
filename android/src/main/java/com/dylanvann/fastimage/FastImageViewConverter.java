@@ -36,6 +36,10 @@ class FastImageViewConverter {
         return glideUrl;
     }
 
+    static String placeholder(ReadableMap source) {
+        return source.getString("placeholder");
+    }
+
     private static Map<String, Priority> REACT_PRIORITY_MAP =
             new HashMap<String, Priority>() {{
                 put("low", Priority.LOW);

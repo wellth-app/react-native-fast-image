@@ -89,6 +89,8 @@ const FastImageSourcePropType = PropTypes.shape({
   uri: PropTypes.string,
   headers: PropTypes.objectOf(PropTypes.string),
   priority: PropTypes.oneOf(Object.keys(FastImage.priority)),
+  /// (Android only) A placeholder to be loaded into the image view while the iamge at `uri` is loaded.
+  placeholderPath: PropTypes.string,
 })
 
 FastImage.propTypes = {
