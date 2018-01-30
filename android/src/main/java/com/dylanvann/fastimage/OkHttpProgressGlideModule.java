@@ -1,16 +1,24 @@
 package com.dylanvann.fastimage;
 
+import android.app.Application;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.GlideBuilder;
+import com.bumptech.glide.integration.okhttp3.OkHttpStreamFetcher;
 import com.bumptech.glide.integration.okhttp3.OkHttpUrlLoader;
+import com.bumptech.glide.load.data.DataFetcher;
+import com.bumptech.glide.load.data.StreamLocalUriFetcher;
 import com.bumptech.glide.load.engine.cache.DiskCache;
 import com.bumptech.glide.load.engine.cache.InternalCacheDiskCacheFactory;
 import com.bumptech.glide.load.engine.cache.LruResourceCache;
+import com.bumptech.glide.load.model.GenericLoaderFactory;
 import com.bumptech.glide.load.model.GlideUrl;
+import com.bumptech.glide.load.model.ModelLoader;
+import com.bumptech.glide.load.model.ModelLoaderFactory;
+import com.bumptech.glide.load.model.stream.StreamModelLoader;
 import com.bumptech.glide.module.GlideModule;
 
 import java.io.IOException;
@@ -18,6 +26,7 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
+import okhttp3.Call;
 import okhttp3.Interceptor;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -30,41 +39,38 @@ import okio.ForwardingSource;
 import okio.Okio;
 import okio.Source;
 
-/*
- *  A facade class which grabs the disk cache when it's built by the factory and updates the static
- *  value on the `OkHttpProgressGlideModule`.
- */
-class CustomDiskCacheFactory implements DiskCache.Factory {
-    private final DiskCache.Factory factory;
+class FastImageUrlLoader implements StreamModelLoader<FastImageUrl> {
+    private final Call.Factory client;
 
-    public CustomDiskCacheFactory(DiskCache.Factory factory) {
-        this.factory = factory;
+    public FastImageUrlLoader(Call.Factory client) {
+        this.client = client;
     }
 
     @Override
-    public DiskCache build() {
-        DiskCache cache = factory.build();
-        OkHttpProgressGlideModule.diskCache = cache;
-        return cache;
+    public DataFetcher<InputStream> getResourceFetcher(FastImageUrl model, int width, int height) {
+        return new OkHttpStreamFetcher(client, new GlideUrl(model.getRemoteUrl()));
+    }
+
+    public static class Factory implements ModelLoaderFactory<FastImageUrl, InputStream> {
+        private Call.Factory client;
+
+        public Factory(Call.Factory client) {
+            this.client = client;
+        }
+
+        @Override
+        public ModelLoader<FastImageUrl, InputStream> build(Context context, GenericLoaderFactory factories) {
+            return new FastImageUrlLoader(client);
+        }
+
+        @Override
+        public void teardown() { }
     }
 }
 
 public class OkHttpProgressGlideModule implements GlideModule {
-    private static final int CACHE_SIZE = 10000000;
-
-    private static LruResourceCache cache = new LruResourceCache(CACHE_SIZE);
-    static DiskCache diskCache;
-
-    public static LruResourceCache getMemoryCache() {
-        return cache;
-    }
-    public static DiskCache getDiskCache() { return diskCache; }
     @Override
-    public void applyOptions(Context context, GlideBuilder builder) {
-        // Set the custom cache
-        builder.setDiskCache(new CustomDiskCacheFactory(new InternalCacheDiskCacheFactory(context)));
-        builder.setMemoryCache(cache);
-    }
+    public void applyOptions(Context context, GlideBuilder builder) {}
 
     @Override
     public void registerComponents(Context context, Glide glide) {
@@ -72,7 +78,8 @@ public class OkHttpProgressGlideModule implements GlideModule {
                 .Builder()
                 .addInterceptor(createInterceptor(new DispatchingProgressListener()))
                 .build();
-        glide.register(GlideUrl.class, InputStream.class, new OkHttpUrlLoader.Factory(client));
+
+        glide.register(FastImageUrl.class, InputStream.class, new FastImageUrlLoader.Factory(client));
     }
 
     private static Interceptor createInterceptor(final ResponseProgressListener listener) {

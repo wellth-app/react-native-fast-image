@@ -98,14 +98,14 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
         return false;
     }
 
-    private static RequestListener<GlideUrl, GlideDrawable> NetworkListener = new RequestListener<GlideUrl, GlideDrawable>() {
+    private static RequestListener<FastImageUrl, GlideDrawable> NetworkListener = new RequestListener<FastImageUrl, GlideDrawable>() {
         @Override
-        public boolean onException(Exception e, GlideUrl uri, Target<GlideDrawable> target, boolean isFirstResource) {
+        public boolean onException(Exception e, FastImageUrl uri, Target<GlideDrawable> target, boolean isFirstResource) {
             return drawableListenerException(uri.toStringUrl(), target, e);
         }
 
         @Override
-        public boolean onResourceReady(GlideDrawable resource, GlideUrl uri, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
+        public boolean onResourceReady(GlideDrawable resource, FastImageUrl uri, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
             return drawableListenerReady(target);
         }
     };
@@ -136,20 +136,16 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
         }
 
         // Get the GlideUrl which contains header info.
-        GlideUrl glideUrl = FastImageViewConverter.glideUrl(source);
-        view.glideUrl = glideUrl;
-
-        // Get priority.
+        FastImageUrl fastImageUrl = FastImageViewConverter.fastImageUrl(source);
         final Priority priority = FastImageViewConverter.priority(source);
 
-        // Get the placeholder.
-        String placeholderPath = FastImageViewConverter.placeholder(source);
-
-        // Cancel existing request.
+        view.glideUrl = fastImageUrl;
         Glide.clear(view);
 
-        String key = glideUrl.toStringUrl();
+        String key = fastImageUrl.toStringUrl();
+
         OkHttpProgressGlideModule.expect(key, this);
+
         List<ImageViewWithUrl> viewsForKey = VIEWS_FOR_URLS.get(key);
         if (viewsForKey != null && !viewsForKey.contains(view)) {
             viewsForKey.add(view);
@@ -160,44 +156,17 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
 
         ThemedReactContext context = (ThemedReactContext) view.getContext();
         RCTEventEmitter eventEmitter = context.getJSModule(RCTEventEmitter.class);
-        int viewId = view.getId();
-        eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_START_EVENT, new WritableNativeMap());
 
-        if (placeholderPath != null && !placeholderPath.isEmpty()) {
-            loadPlaceholderInto(view, placeholderPath, glideUrl, priority, NetworkListener);
+        eventEmitter.receiveEvent(view.getId(), REACT_ON_LOAD_START_EVENT, new WritableNativeMap());
+
+        if (key.startsWith("http")) {
+            loadInto(view, fastImageUrl, priority, NetworkListener);
         } else {
-            if (key.startsWith("http")) {
-                loadInto(view, glideUrl, priority, NetworkListener);
-            } else {
-                loadInto(view, key, priority, LocalPathListener);
-            }
+            loadInto(view, key, priority, LocalPathListener);
         }
     }
 
-    private <LocalModel, RemoteModel, Listener extends RequestListener<RemoteModel, GlideDrawable>> void loadPlaceholderInto(final ImageView view, final LocalModel localModel, final RemoteModel remoteModel, final Priority priority, final Listener listener) {
-        Glide
-            .with(view.getContext().getApplicationContext())
-            .load(localModel)
-            .dontTransform()
-            .priority(priority)
-            .diskCacheStrategy(DiskCacheStrategy.SOURCE)
-            .placeholder(TRANSPARENT_DRAWABLE)
-            .listener(new RequestListener<LocalModel, GlideDrawable>() {
-                @Override
-                public boolean onException(Exception e, LocalModel model, Target<GlideDrawable> target, boolean isFirstResource) {
-                    return false;
-                }
-
-                @Override
-                public boolean onResourceReady(GlideDrawable resource, LocalModel model, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
-                    loadInto(view, remoteModel, priority, listener);
-                    return false;
-                }
-            })
-            .into(view);
-    }
-
-    private <Model, Result, Listener extends RequestListener<Model, GlideDrawable>> void loadInto(ImageView view, Model model, Priority priority, Listener listener) {
+    private <Model, Listener extends RequestListener<Model, GlideDrawable>> void loadInto(ImageView view, Model model, Priority priority, Listener listener) {
         Glide
             .with(view.getContext().getApplicationContext())
             .load(model)

@@ -57,11 +57,11 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
             public void run() {
             for (int i = 0; i < sources.size(); i++) {
                 final ReadableMap source = sources.getMap(i);
-                final GlideUrl glideUrl = FastImageViewConverter.glideUrl(source);
+                final FastImageUrl url = FastImageViewConverter.fastImageUrl(source);
                 final Priority priority = FastImageViewConverter.priority(source);
                 Glide
                     .with(activity.getApplicationContext())
-                    .load(glideUrl)
+                    .load(url)
                     .priority(priority)
                     .placeholder(TRANSPARENT_DRAWABLE)
                     .diskCacheStrategy(DiskCacheStrategy.SOURCE)
@@ -72,9 +72,24 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
     }
 
     /**
-     *  Used in iOS to set the image in the cache for a certain key. Glide isn't as clear cut
-     *  and hides away cache access, so this is a no-op.
+     * Moves the file at `localPath` to the key `remoteUrl`.
+     *
+     * @param localPath
+     * @param remoteUrl
      */
     @ReactMethod
-    public void setImage(String localPath, String cacheKey) {}
+    public void setImage(final String localPath, final String remoteUrl) {
+        final Activity activity = getCurrentActivity();
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+            Glide.with(activity.getApplicationContext())
+                    .load(new FastImageUrl(remoteUrl, localPath))
+                    .priority(Priority.HIGH)
+                    .placeholder(TRANSPARENT_DRAWABLE)
+                    .diskCacheStrategy(DiskCacheStrategy.SOURCE)
+                    .preload();
+            }
+        });
+    }
 }

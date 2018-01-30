@@ -14,10 +14,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 class FastImageViewConverter {
-    static GlideUrl glideUrl(ReadableMap source) {
+    static FastImageUrl fastImageUrl(ReadableMap source) {
         final String uriProp = source.getString("uri");
         // Get the headers prop and add to glideUrl.
-        GlideUrl glideUrl;
+        FastImageUrl url;
         try {
             final ReadableMap headersMap = source.getMap("headers");
             ReadableMapKeySetIterator headersIterator = headersMap.keySetIterator();
@@ -27,17 +27,15 @@ class FastImageViewConverter {
                 String value = headersMap.getString(key);
                 headersBuilder.addHeader(key, value);
             }
+
             LazyHeaders headers = headersBuilder.build();
-            glideUrl = new GlideUrl(uriProp, headers);
+            url = new FastImageUrl(uriProp, headers);
         } catch (NoSuchKeyException e) {
             // If there is no headers object.
-            glideUrl = new GlideUrl(uriProp);
+            url = new FastImageUrl(uriProp);
         }
-        return glideUrl;
-    }
 
-    static String placeholder(ReadableMap source) {
-        return source.getString("placeholder");
+        return url;
     }
 
     private static Map<String, Priority> REACT_PRIORITY_MAP =

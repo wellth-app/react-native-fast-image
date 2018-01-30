@@ -3,6 +3,7 @@ import { TabNavigator, TabBarBottom } from 'react-navigation'
 import FastImageExample from './fastImage/FastImageExample'
 import FastImageGrid from './fastImage/FastImageGrid'
 import DefaultImageGrid from './fastImage/DefaultImageGrid'
+import FullScreenImageExample from './fastImage/FullScreenImageExample'
 
 const App = TabNavigator(
   {
@@ -15,6 +16,9 @@ const App = TabNavigator(
     fastImage: {
       screen: FastImageGrid,
     },
+    fullScreen: {
+      screen: FullScreenImageExample,
+    }
   },
   {
     tabBarComponent: TabBarBottom,
