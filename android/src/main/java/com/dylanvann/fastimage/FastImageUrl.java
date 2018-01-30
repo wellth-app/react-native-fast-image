@@ -32,7 +32,7 @@ public class FastImageUrl extends GlideUrl {
 
     @Override
     public String getCacheKey() {
-        Log.d("FastImageUrl", String.format("Getting cache key for %s and %s", localPath, remoteUrl);
+        Log.d("FastImageUrl", String.format("Getting cache key for %s and %s", localPath, remoteUrl));
         return remoteUrl;
     }
 
