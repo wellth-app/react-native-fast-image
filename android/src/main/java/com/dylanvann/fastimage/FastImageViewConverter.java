@@ -16,6 +16,8 @@ import java.util.Map;
 class FastImageViewConverter {
     static FastImageUrl fastImageUrl(ReadableMap source) {
         final String uriProp = source.getString("uri");
+        final boolean isLocal = uriProp.startsWith("http") ? false : true;
+
         // Get the headers prop and add to glideUrl.
         FastImageUrl url;
         try {
@@ -29,10 +31,10 @@ class FastImageViewConverter {
             }
 
             LazyHeaders headers = headersBuilder.build();
-            url = new FastImageUrl(uriProp, headers);
+            url = new FastImageUrl(uriProp, headers, isLocal);
         } catch (NoSuchKeyException e) {
             // If there is no headers object.
-            url = new FastImageUrl(uriProp);
+            url = new FastImageUrl(uriProp, isLocal);
         }
 
         return url;
