@@ -1,15 +1,19 @@
 package com.dylanvann.fastimage;
 
 import android.app.Application;
+import android.content.ContentResolver;
 import android.content.Context;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.GlideBuilder;
 import com.bumptech.glide.integration.okhttp3.OkHttpStreamFetcher;
 import com.bumptech.glide.integration.okhttp3.OkHttpUrlLoader;
 import com.bumptech.glide.load.data.DataFetcher;
+import com.bumptech.glide.load.data.LocalUriFetcher;
 import com.bumptech.glide.load.data.StreamLocalUriFetcher;
 import com.bumptech.glide.load.engine.cache.DiskCache;
 import com.bumptech.glide.load.engine.cache.InternalCacheDiskCacheFactory;
@@ -21,6 +25,7 @@ import com.bumptech.glide.load.model.ModelLoaderFactory;
 import com.bumptech.glide.load.model.stream.StreamModelLoader;
 import com.bumptech.glide.module.GlideModule;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -41,13 +46,20 @@ import okio.Source;
 
 class FastImageUrlLoader implements StreamModelLoader<FastImageUrl> {
     private final Call.Factory client;
+    private final Context context;
 
-    public FastImageUrlLoader(Call.Factory client) {
+    public FastImageUrlLoader(Context context, Call.Factory client) {
+        this.context = context;
         this.client = client;
     }
 
     @Override
     public DataFetcher<InputStream> getResourceFetcher(FastImageUrl model, int width, int height) {
+        if (model.getRemoteUrl() != null && model.getLocalPath() != null) {
+            Log.d("FastImageUrlLoader", String.format("We should load the local file from %s", model.getLocalPath()));
+            return new StreamLocalUriFetcher(this.context, Uri.parse(model.getLocalPath()));
+        }
+
         return new OkHttpStreamFetcher(client, new GlideUrl(model.getRemoteUrl()));
     }
 
@@ -60,7 +72,7 @@ class FastImageUrlLoader implements StreamModelLoader<FastImageUrl> {
 
         @Override
         public ModelLoader<FastImageUrl, InputStream> build(Context context, GenericLoaderFactory factories) {
-            return new FastImageUrlLoader(client);
+            return new FastImageUrlLoader(context, client);
         }
 
         @Override

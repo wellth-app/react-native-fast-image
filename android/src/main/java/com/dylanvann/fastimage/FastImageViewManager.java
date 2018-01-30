@@ -98,7 +98,7 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
         return false;
     }
 
-    private static RequestListener<FastImageUrl, GlideDrawable> NetworkListener = new RequestListener<FastImageUrl, GlideDrawable>() {
+    private static RequestListener<FastImageUrl, GlideDrawable> Listener = new RequestListener<FastImageUrl, GlideDrawable>() {
         @Override
         public boolean onException(Exception e, FastImageUrl uri, Target<GlideDrawable> target, boolean isFirstResource) {
             return drawableListenerException(uri.toStringUrl(), target, e);
@@ -106,18 +106,6 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
 
         @Override
         public boolean onResourceReady(GlideDrawable resource, FastImageUrl uri, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
-            return drawableListenerReady(target);
-        }
-    };
-
-    private static RequestListener<String, GlideDrawable> LocalPathListener = new RequestListener<String, GlideDrawable>() {
-        @Override
-        public boolean onException(Exception e, String model, Target<GlideDrawable> target, boolean isFirstResource) {
-            return drawableListenerException(model, target, e);
-        }
-
-        @Override
-        public boolean onResourceReady(GlideDrawable resource, String model, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
             return drawableListenerReady(target);
         }
     };
@@ -159,11 +147,7 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
 
         eventEmitter.receiveEvent(view.getId(), REACT_ON_LOAD_START_EVENT, new WritableNativeMap());
 
-        if (key.startsWith("http")) {
-            loadInto(view, fastImageUrl, priority, NetworkListener);
-        } else {
-            loadInto(view, key, priority, LocalPathListener);
-        }
+        loadInto(view, fastImageUrl, priority, Listener);
     }
 
     private <Model, Listener extends RequestListener<Model, GlideDrawable>> void loadInto(ImageView view, Model model, Priority priority, Listener listener) {
