@@ -55,11 +55,13 @@ class FastImageUrlLoader implements StreamModelLoader<FastImageUrl> {
 
     @Override
     public DataFetcher<InputStream> getResourceFetcher(FastImageUrl model, int width, int height) {
-        if (model.getRemoteUrl() != null && model.getLocalPath() != null) {
+        Log.d("FastImageUrlLoader", String.format("Loading the model: %s", model));
+        if (model.getLocalPath() != null) {
             Log.d("FastImageUrlLoader", String.format("We should load the local file from %s", model.getLocalPath()));
             return new StreamLocalUriFetcher(this.context, Uri.parse(model.getLocalPath()));
         }
 
+        Log.d("FastImageUrlLoader", String.format("We should load the remote file from %s", model.getRemoteUrl()));
         return new OkHttpStreamFetcher(client, new GlideUrl(model.getRemoteUrl()));
     }
 
@@ -72,6 +74,7 @@ class FastImageUrlLoader implements StreamModelLoader<FastImageUrl> {
 
         @Override
         public ModelLoader<FastImageUrl, InputStream> build(Context context, GenericLoaderFactory factories) {
+            Log.d("FastImageUrlInit", "Creating a FastImageUrlLoader");
             return new FastImageUrlLoader(context, client);
         }
 
