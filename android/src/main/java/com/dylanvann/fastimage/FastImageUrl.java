@@ -1,5 +1,6 @@
 package com.dylanvann.fastimage;
 
+import android.net.Uri;
 import android.util.Log;
 
 import com.bumptech.glide.load.model.GlideUrl;
@@ -16,7 +17,17 @@ public class FastImageUrl extends GlideUrl {
 
     public FastImageUrl(String uri, boolean isLocal) {
         super(uri);
-        Log.d("FastImageUrl", String.format("Setting up FastImageUrl for \"%s\"%s", remoteUrl, isLocal ? " from file" : ""));
+
+        if (isLocal) {
+            this.localPath = uri;
+        } else {
+            this.remoteUrl = uri;
+        }
+    }
+
+    public FastImageUrl(String uri, boolean isLocal, @Nullable LazyHeaders headers) {
+        super(uri, headers);
+
         if (isLocal) {
             this.localPath = uri;
         } else {
@@ -25,40 +36,31 @@ public class FastImageUrl extends GlideUrl {
     }
 
     public FastImageUrl(String remoteUrl, String localPath) {
-        super(localPath);
+        super(remoteUrl);
+
         Log.d("FastImageUrl", String.format("Setting up FastImageUrl for local path:\"%s\" and \"%s\"", localPath, remoteUrl));
+
         this.localPath = localPath;
         this.remoteUrl = remoteUrl;
     }
 
-    public FastImageUrl(String uri, LazyHeaders headers, boolean isLocal) {
-        super(uri, headers);
-        if (isLocal) {
-            this.localPath = uri;
-        } else {
-            this.remoteUrl = uri;
-        }
-    }
-
-    public FastImageUrl(String remoteUrl, String localPath, LazyHeaders headers) {
+    public FastImageUrl(String remoteUrl, String localPath, @Nullable LazyHeaders headers) {
         super(remoteUrl, headers);
+
+        Log.d("FastImageUrl", String.format("Setting up FastImageUrl for local path:\"%s\" and \"%s\"", localPath, remoteUrl));
+
         this.localPath = localPath;
         this.remoteUrl = remoteUrl;
     }
 
     @Override
     public String getCacheKey() {
-        Log.d("FastImageUrl", String.format("Getting cache key for %s and %s", localPath, remoteUrl));
         if (localPath != null && remoteUrl != null) {
-            return remoteUrl;
-        }
-
-        if (isLocalImage()) {
-            return localPath;
-        }
-
-        if (isRemoteImage()) {
-            return remoteUrl;
+            return getRemoteUri().toString();
+        } else if (isLocalImage()) {
+            return getLocalUri().toString();
+        } else if (isRemoteImage()) {
+            return getRemoteUri().toString();
         }
 
         return super.getCacheKey();
@@ -74,4 +76,19 @@ public class FastImageUrl extends GlideUrl {
 
     public String getLocalPath() { return localPath; }
     public String getRemoteUrl() { return remoteUrl; }
+
+    public Uri getLocalUri() {
+        String uriString = localPath.contains("file://")
+                ? localPath
+                : String.format("file://%s", localPath);
+        return Uri.parse(uriString);
+    }
+
+    public Uri getRemoteUri() {
+        String uriString = remoteUrl.contains("http")
+                ? remoteUrl
+                : String.format("https://%s", remoteUrl);
+
+        return Uri.parse(uriString);
+    }
 }
