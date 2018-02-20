@@ -1,19 +1,13 @@
 package com.dylanvann.fastimage;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.widget.ImageView;
 
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.Priority;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.load.model.GlideUrl;
-import com.bumptech.glide.load.resource.drawable.GlideDrawable;
-import com.bumptech.glide.request.RequestListener;
-import com.bumptech.glide.request.target.ImageViewTarget;
-import com.bumptech.glide.request.target.Target;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableNativeMap;
@@ -22,6 +16,9 @@ import com.facebook.react.uimanager.SimpleViewManager;
 import com.facebook.react.uimanager.ThemedReactContext;
 import com.facebook.react.uimanager.annotations.ReactProp;
 import com.facebook.react.uimanager.events.RCTEventEmitter;
+import com.squareup.picasso.Callback;
+import com.squareup.picasso.Picasso;
+import com.squareup.picasso.Picasso.Priority;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,9 +28,9 @@ import java.util.Map;
 
 import javax.annotation.Nullable;
 
+@SuppressLint("AppCompatCustomView")
 class ImageViewWithUrl extends ImageView {
-    public GlideUrl glideUrl;
-
+    public Uri imageURI;
     public ImageViewWithUrl(Context context) {
         super(context);
     }
@@ -56,21 +53,65 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
     }
 
     @Override
-    protected ImageViewWithUrl createViewInstance(ThemedReactContext reactContext) {
+    protected ImageViewWithUrl createViewInstance(final ThemedReactContext reactContext) {
         return new ImageViewWithUrl(reactContext);
     }
 
-    private static boolean drawableListenerException(String uri, Target<GlideDrawable> target, Exception exception) {
-        OkHttpProgressGlideModule.forget(uri);
-        if (!(target instanceof ImageViewTarget)) {
-            return false;
-        }
-        ImageViewWithUrl view = (ImageViewWithUrl) ((ImageViewTarget) target).getView();
-        ThemedReactContext context = (ThemedReactContext) view.getContext();
-        RCTEventEmitter eventEmitter = context.getJSModule(RCTEventEmitter.class);
-        int viewId = view.getId();
+    private static class LocalLoadCallback implements Callback {
+        private final ImageViewWithUrl view;
+        private final String uri;
 
-        WritableNativeMap errorMap = new WritableNativeMap();
+        LocalLoadCallback(final ImageViewWithUrl view, final String uri) {
+            this.view = view;
+            this.uri = uri;
+        }
+
+        @Override
+        public void onSuccess() {
+            drawableListenerReady(this.view);
+        }
+
+        @Override
+        public void onError() {
+            drawableListenerException(this.uri, this.view, new Exception());
+        }
+    }
+
+    private static class NetworkLoadCallback implements Callback {
+        private final ImageViewWithUrl view;
+        private final Uri uri;
+
+        NetworkLoadCallback(final ImageViewWithUrl view, final Uri uri) {
+            this.view = view;
+            this.uri = uri;
+        }
+
+        @Override
+        public void onSuccess() {
+            drawableListenerReady(this.view);
+        }
+
+        @Override
+        public void onError() {
+            drawableListenerException(this.uri.toString(), this.view, new Exception());
+        }
+    }
+
+    /**
+     * Passes an exception along to the JS event emitter
+     * @param uri
+     * @param view
+     * @param exception
+     * @return
+     */
+    private static void drawableListenerException(final String uri, final ImageViewWithUrl view, final Exception exception) {
+        Picasso.with(view.getContext()).invalidate(uri);
+
+        final ThemedReactContext context = (ThemedReactContext) view.getContext();
+        final RCTEventEmitter eventEmitter = context.getJSModule(RCTEventEmitter.class);
+        final int viewId = view.getId();
+
+        final WritableNativeMap errorMap = new WritableNativeMap();
         errorMap.putString("uri", uri);
         errorMap.putString("localizedMessage", exception.getLocalizedMessage());
         errorMap.putString("message", exception.getMessage());
@@ -78,135 +119,164 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
 
         eventEmitter.receiveEvent(viewId, REACT_ON_ERROR_EVENT, errorMap);
         eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_END_EVENT, new WritableNativeMap());
-
-        return false;
     }
 
-    private static boolean drawableListenerReady(Target<GlideDrawable> target) {
-        if (!(target instanceof ImageViewTarget)) {
-            return false;
-        }
+    /**
+     * Passes view ready status along to the JS event emitter
+     * @param view
+     */
+    private static void drawableListenerReady(ImageViewWithUrl view) {
+        final ThemedReactContext context = (ThemedReactContext) view.getContext();
+        final RCTEventEmitter eventEmitter = context.getJSModule(RCTEventEmitter.class);
+        final int viewId = view.getId();
 
-        ImageViewWithUrl view = (ImageViewWithUrl) ((ImageViewTarget) target).getView();
-        ThemedReactContext context = (ThemedReactContext) view.getContext();
-        RCTEventEmitter eventEmitter = context.getJSModule(RCTEventEmitter.class);
-
-        int viewId = view.getId();
         eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_EVENT, new WritableNativeMap());
         eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_END_EVENT, new WritableNativeMap());
-
-        return false;
     }
 
-    private static RequestListener<GlideUrl, GlideDrawable> NetworkListener = new RequestListener<GlideUrl, GlideDrawable>() {
-        @Override
-        public boolean onException(Exception e, GlideUrl uri, Target<GlideDrawable> target, boolean isFirstResource) {
-            return drawableListenerException(uri.toStringUrl(), target, e);
-        }
-
-        @Override
-        public boolean onResourceReady(GlideDrawable resource, GlideUrl uri, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
-            return drawableListenerReady(target);
-        }
-    };
-
-    private static RequestListener<String, GlideDrawable> LocalPathListener = new RequestListener<String, GlideDrawable>() {
-        @Override
-        public boolean onException(Exception e, String model, Target<GlideDrawable> target, boolean isFirstResource) {
-            return drawableListenerException(model, target, e);
-        }
-
-        @Override
-        public boolean onResourceReady(GlideDrawable resource, String model, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
-            return drawableListenerReady(target);
-        }
-    };
-
+    /**
+     * Sets the source of the image
+     * @param view
+     * @param source
+     */
     @ReactProp(name = "source")
-    public void setSrc(ImageViewWithUrl view, @Nullable ReadableMap source) {
+    public void setSrc(final ImageViewWithUrl view, @Nullable ReadableMap source) {
+
+        // Define the Picasso instance we'll be working with
+        final Picasso picasso = Picasso.with(view.getContext());
+
+        // If the source map is null, stop everything and clear the ImageView
         if (source == null) {
-            // Cancel existing requests.
-            Glide.clear(view);
-            if (view.glideUrl != null) {
-                OkHttpProgressGlideModule.forget(view.glideUrl.toStringUrl());
+
+            // Cancel all requests associated with this view
+            picasso.cancelRequest(view);
+            picasso.cancelTag(view);
+
+            // Invalidate any request with the URI in that ImageView
+            if (view.imageURI != null) {
+                picasso.invalidate(view.imageURI);
+                picasso.cancelTag(view.imageURI.toString());
             }
-            // Clear the image.
+
+            // Actually clear the image from the ImageView
             view.setImageDrawable(null);
             return;
         }
 
-        // Get the GlideUrl which contains header info.
-        GlideUrl glideUrl = FastImageViewConverter.glideUrl(source);
-        view.glideUrl = glideUrl;
+        // Get the image URI from the source map & set it on the view object
+        final Uri uri = FastImageViewConverter.getURI(source);
+        view.imageURI = uri;
 
-        // Get priority.
+        // Get the priority
         final Priority priority = FastImageViewConverter.priority(source);
 
-        // Get the placeholder.
-        String placeholderPath = FastImageViewConverter.placeholder(source);
+        // Get the placeholder path
+        final String placeholderPath = FastImageViewConverter.placeholder(source);
 
-        // Cancel existing request.
-        Glide.clear(view);
+        // Cancel any existing request for this view
+        picasso.cancelRequest(view);
+        picasso.cancelTag(view);
 
-        String key = glideUrl.toStringUrl();
-        OkHttpProgressGlideModule.expect(key, this);
-        List<ImageViewWithUrl> viewsForKey = VIEWS_FOR_URLS.get(key);
+        // Determine the cache key
+        final String key = uri.toString();
+
+        // Determine what views use this particular key
+        final List<ImageViewWithUrl> viewsForKey = VIEWS_FOR_URLS.get(key);
+
         if (viewsForKey != null && !viewsForKey.contains(view)) {
             viewsForKey.add(view);
         } else if (viewsForKey == null) {
-            List<ImageViewWithUrl> newViewsForKeys = new ArrayList<ImageViewWithUrl>(Arrays.asList(view));
+            List<ImageViewWithUrl> newViewsForKeys = new ArrayList<>(Arrays.asList(view));
             VIEWS_FOR_URLS.put(key, newViewsForKeys);
         }
 
-        ThemedReactContext context = (ThemedReactContext) view.getContext();
-        RCTEventEmitter eventEmitter = context.getJSModule(RCTEventEmitter.class);
-        int viewId = view.getId();
+        final ThemedReactContext context = (ThemedReactContext) view.getContext();
+        final RCTEventEmitter eventEmitter = context.getJSModule(RCTEventEmitter.class);
+        final int viewId = view.getId();
         eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_START_EVENT, new WritableNativeMap());
 
+        // In the case of a provided placeholder...
         if (placeholderPath != null && !placeholderPath.isEmpty()) {
-            loadPlaceholderInto(view, placeholderPath, glideUrl, priority, NetworkListener);
+            loadPlaceholderInto(view, placeholderPath, uri, priority);
+
+        // In the case where not placeholder was provided...
         } else {
             if (key.startsWith("http")) {
-                loadInto(view, glideUrl, priority, NetworkListener);
+                loadNetworkInto(view, uri, priority, new NetworkLoadCallback(view, uri));
             } else {
-                loadInto(view, key, priority, LocalPathListener);
+                loadLocalInto(view, key, priority, new LocalLoadCallback(view, key));
             }
         }
     }
 
-    private <LocalModel, RemoteModel, Listener extends RequestListener<RemoteModel, GlideDrawable>> void loadPlaceholderInto(final ImageView view, final LocalModel localModel, final RemoteModel remoteModel, final Priority priority, final Listener listener) {
-        Glide
-            .with(view.getContext().getApplicationContext())
-            .load(localModel)
-            .dontTransform()
-            .priority(priority)
-            .diskCacheStrategy(DiskCacheStrategy.SOURCE)
-            .placeholder(TRANSPARENT_DRAWABLE)
-            .listener(new RequestListener<LocalModel, GlideDrawable>() {
-                @Override
-                public boolean onException(Exception e, LocalModel model, Target<GlideDrawable> target, boolean isFirstResource) {
-                    return false;
-                }
+    /**
+     * Loads a local image into a view as a placeholder and then downloads the remote image and
+     * then displays that when complete.
+     * @param view
+     * @param localPath
+     * @param remoteURI
+     * @param priority
+     */
+    private void loadPlaceholderInto(final ImageViewWithUrl view, final String localPath, final Uri remoteURI, final Priority priority) {
 
-                @Override
-                public boolean onResourceReady(GlideDrawable resource, LocalModel model, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
-                    loadInto(view, remoteModel, priority, listener);
-                    return false;
-                }
-            })
-            .into(view);
+        final Picasso picasso = Picasso.with(view.getContext().getApplicationContext());
+
+        picasso.load(localPath).placeholder(TRANSPARENT_DRAWABLE).priority(priority).into(view, new Callback() {
+            @Override
+            public void onSuccess() {
+                picasso.load(remoteURI).priority(priority).fetch(new Callback() {
+                    @Override
+                    public void onSuccess() {
+                        loadNetworkInto(view, remoteURI, priority, new NetworkLoadCallback(view, remoteURI));
+                    }
+
+                    @Override
+                    public void onError() {
+
+                    }
+                });
+            }
+
+            @Override
+            public void onError() {
+
+            }
+        });
+
     }
 
-    private <Model, Result, Listener extends RequestListener<Model, GlideDrawable>> void loadInto(ImageView view, Model model, Priority priority, Listener listener) {
-        Glide
-            .with(view.getContext().getApplicationContext())
-            .load(model)
-            .dontTransform()
-            .priority(priority)
-            .diskCacheStrategy(DiskCacheStrategy.SOURCE)
-            .placeholder(TRANSPARENT_DRAWABLE)
-            .listener(listener)
-            .into(view);
+    /**
+     * Loads a network image into a view
+     * @param view
+     * @param uri
+     * @param priority
+     * @param listener
+     */
+    private void loadNetworkInto(final ImageView view, final Uri uri, final Priority priority, final Callback listener) {
+        Picasso
+                .with(view.getContext().getApplicationContext())
+                .load(uri)
+                .placeholder(TRANSPARENT_DRAWABLE)
+                .stableKey(uri.toString())
+                .priority(priority)
+                .into(view, listener);
+    }
+
+    /**
+     * Loads a local image into a view
+     * @param view
+     * @param path
+     * @param priority
+     * @param listener
+     */
+    private void loadLocalInto(final ImageView view, final String path, final Priority priority, final Callback listener) {
+        Picasso
+                .with(view.getContext().getApplicationContext())
+                .load(path)
+                .placeholder(TRANSPARENT_DRAWABLE)
+                .stableKey(path)
+                .priority(priority)
+                .into(view, listener);
     }
 
     @ReactProp(name = "resizeMode")
@@ -217,10 +287,9 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
 
     @Override
     public void onDropViewInstance(ImageViewWithUrl view) {
-        // This will cancel existing requests.
-        Glide.clear(view);
-        final String key = view.glideUrl.toString();
-        OkHttpProgressGlideModule.forget(key);
+        Picasso.with(view.getContext().getApplicationContext()).invalidate(view.imageURI);
+
+        final String key = view.imageURI.toString();
         List<ImageViewWithUrl> viewsForKey = VIEWS_FOR_URLS.get(key);
         if (viewsForKey != null) {
             viewsForKey.remove(view);
@@ -247,7 +316,7 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
     }
 
     @Override
-    public void onProgress(String key, long bytesRead, long expectedLength) {
+    public void onProgress(final String key, final long bytesRead, final long expectedLength) {
         List<ImageViewWithUrl> viewsForKey = VIEWS_FOR_URLS.get(key);
         if (viewsForKey != null) {
             for (ImageViewWithUrl view: viewsForKey) {
