@@ -203,10 +203,8 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
         // In the case where not placeholder was provided...
         } else {
             if (key.startsWith("http")) {
-                Log.i("FASTIMAGE", "setSrc starts with http uri = " + uri.toString());
                 loadNetworkInto(view, uri, priority, new NetworkLoadCallback(view, uri));
             } else {
-                Log.i("FASTIMAGE", "setSrc starts with !http key = " + key);
                 loadLocalInto(view, key, priority, new LocalLoadCallback(view, key));
             }
         }
@@ -227,7 +225,6 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
         picasso.load(localPath).placeholder(TRANSPARENT_DRAWABLE).priority(priority).into(view, new Callback() {
             @Override
             public void onSuccess() {
-                Log.i("FASTIMAGE", "loadPlaceholderInto stableKey = " + remoteURI.toString());
                 picasso.load(remoteURI).stableKey(remoteURI.toString()).priority(priority).fetch(new Callback() {
                     @Override
                     public void onSuccess() {
@@ -257,7 +254,6 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
      * @param listener
      */
     private void loadNetworkInto(final ImageView view, final Uri uri, final Priority priority, final Callback listener) {
-        Log.i("FASTIMAGE", "loadNetworkInto stableKey = " + uri.toString());
         Picasso
                 .with(view.getContext().getApplicationContext())
                 .load(uri)

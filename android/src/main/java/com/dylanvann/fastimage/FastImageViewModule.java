@@ -47,22 +47,6 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
     public void setImage(String localPath, String cacheKey) {
         final Activity activity = getCurrentActivity();
         final File fileHandle = new File(localPath);
-        Picasso.with(activity.getApplicationContext()).load(fileHandle).stableKey(cacheKey).into(new Target() {
-            @Override
-            public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom loadedFrom) {
-                Log.i("FASTIMAGE", "setImage bitmap loaded!");
-            }
-
-            @Override
-            public void onBitmapFailed(Drawable drawable) {
-                Log.i("FASTIMAGE", "setImage bitmap failed!");
-            }
-
-            @Override
-            public void onPrepareLoad(Drawable drawable) {
-                Log.i("FASTIMAGE", "setImage bitmap prepare loaded!");
-
-            }
-        });
+        Picasso.with(activity.getApplicationContext()).load(fileHandle).stableKey(cacheKey).fetch();
     }
 }
