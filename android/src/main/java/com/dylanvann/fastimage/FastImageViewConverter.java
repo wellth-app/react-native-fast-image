@@ -52,7 +52,11 @@ class FastImageViewConverter {
      * @return
      */
     public static String placeholder(final ReadableMap source) {
-        return source.getString("placeholder");
+        try {
+            return source.getString("placeholder");
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**
