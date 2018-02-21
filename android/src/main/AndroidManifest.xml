@@ -3,7 +3,4 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.dylanvann.fastimage"
     >
-    <application>
-
-    </application>
 </manifest>
