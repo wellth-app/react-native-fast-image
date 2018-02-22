@@ -3,15 +3,4 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.dylanvann.fastimage"
     >
-    <application>
-        <meta-data
-            android:name="com.dylanvann.fastimage.OkHttpProgressGlideModule"
-            android:value="GlideModule"
-            />
-        <meta-data
-            android:name="com.bumptech.glide.integration.okhttp.OkHttpGlideModule"
-            tools:node="remove"
-            android:value="GlideModule"
-            />
-    </application>
 </manifest>
