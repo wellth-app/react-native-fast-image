@@ -1,16 +1,35 @@
-# FastImage
+<h1 align="center">
+  🚩 FastImage
+</h1>
 
-🚩 FastImage, performant React Native image component.
+<p align="center">
+  Performant React Native image component.
+</p>
 
-[![npm](https://img.shields.io/npm/v/react-native-fast-image.svg?style=flat-square)](https://www.npmjs.com/package/react-native-fast-image)
-[![CircleCI](https://img.shields.io/circleci/project/github/DylanVann/react-native-fast-image.svg?style=flat-square)](https://circleci.com/gh/DylanVann/react-native-fast-image)
-[![license](https://img.shields.io/github/license/DylanVann/react-native-fast-image.svg?style=flat-square)](https://github.com/DylanVann/react-native-fast-image/blob/master/LICENSE)
+<p align="center">
+  <a href="https://www.npmjs.com/package/react-native-fast-image">
+    <img src="https://img.shields.io/npm/v/react-native-fast-image.svg?style=flat-square" alt="npm package">
+  </a>
+  <a href="https://www.npmjs.com/package/react-native-fast-image">
+    <img src="https://img.shields.io/npm/dm/react-native-fast-image.svg?style=flat-square" alt="npm downloads">
+  </a>
+  <a href="https://circleci.com/gh/DylanVann/react-native-fast-image/tree/master">
+    <img src="https://img.shields.io/circleci/project/github/DylanVann/react-native-fast-image/master.svg?style=flat-square" alt="CircleCI build status">
+  </a>
+  <a href="https://github.com/DylanVann/react-native-fast-image/blob/master/LICENSE">
+    <img src="https://img.shields.io/github/license/DylanVann/react-native-fast-image.svg?style=flat-square" alt="license">
+  </a>
+</p>
 
 <p align="center" >
-  <img src="http://i.imgur.com/OkYqmCP.gif" title="Grid Demo" float=left>
-  <img src="http://i.imgur.com/q1rNLxw.gif" title="Priority Demo" float=left>
+  <kbd>
+    <img src="https://github.com/DylanVann/react-native-fast-image/raw/master/docs/assets/scroll.gif" title="Scroll Demo" float="left">
+  </kbd>
+  <kbd>
+    <img src="https://github.com/DylanVann/react-native-fast-image/raw/master/docs/assets/priority.gif" title="Priority Demo" float="left">
+  </kbd>
   <br>
-  <em>Comparing FastImage to Image in the example app.</em>
+  <em>FastImage example app.</em>
 </p>
 
 React Native's `Image` component handles image caching like browsers
@@ -38,16 +57,19 @@ and
 - [x] Prioritize images.
 - [x] Preload images.
 - [x] GIF support.
+- [x] Border radius.
 
 ## Usage
 
 ```bash
+# Install
 yarn add react-native-fast-image
+
+# Automatic linking. (other linking methods listed below)
 react-native link
 ```
 
-```js
-
+```jsx
 import FastImage from 'react-native-fast-image'
 
 const YourImage = () =>
@@ -60,6 +82,21 @@ const YourImage = () =>
     }}
     resizeMode={FastImage.resizeMode.contain}
   />
+```
+
+## Other Linking Methods
+
+- [Manual](docs/installation-manual.md) (might be needed if something went wrong with `react-native link`)
+- [CocoaPods (iOS)](docs/installation-cocoapods.md) (you may wish to use this if you are already using CocoaPods)
+- [Are you using Glide already using an AppGlideModule?](docs/app-glide-module.md) (you might have problems if you don't read this)
+
+## Proguard
+
+If you use Proguard you will need to add these lines to `android/app/proguard-rules.pro`:
+
+```
+-keep public class com.dylanvann.fastimage.* {*;}
+-keep public class com.dylanvann.fastimage.** {*;}
 ```
 
 ## Properties
@@ -92,8 +129,8 @@ Headers to load the image with. e.g. `{ Authorization: 'someAuthToken' }`.
 
 ### `resizeMode?: enum`
 
-- `FastImage.resizeMode.contain` **(Default)** - Scale the image uniformly (maintain the image's aspect ratio) so that both dimensions (width and height) of the image will be equal to or less than the corresponding dimension of the view (minus padding).
-- `FastImage.resizeMode.cover` - Scale the image uniformly (maintain the image's aspect ratio) so that both dimensions (width and height) of the image will be equal to or larger than the corresponding dimension of the view (minus padding).
+- `FastImage.resizeMode.contain` - Scale the image uniformly (maintain the image's aspect ratio) so that both dimensions (width and height) of the image will be equal to or less than the corresponding dimension of the view (minus padding).
+- `FastImage.resizeMode.cover` **(Default)** - Scale the image uniformly (maintain the image's aspect ratio) so that both dimensions (width and height) of the image will be equal to or larger than the corresponding dimension of the view (minus padding).
 - `FastImage.resizeMode.stretch` - Scale width and height independently, This may change the aspect ratio of the src.
 - `FastImage.resizeMode.center` - Do not scale the image, keep centered.
 
@@ -113,9 +150,11 @@ e.g. `onProgress={e => console.log(e.nativeEvent.loaded / e.nativeEvent.total)}`
 
 ---
 
-### `onLoad?: () => void`
+### `onLoad?: (event) => void`
 
-Called on a successful image fetch.
+Called on a successful image fetch. Called with the width and height of the loaded image.
+
+e.g. `onLoad={e => console.log(e.nativeEvent.width, e.nativeEvent.height)}`
 
 ---
 
@@ -131,12 +170,9 @@ Called when the image finishes loading, whether it was successful or an error.
 
 ---
 
-### `children`
+### `style`
 
-`FastImage` does not currently support children.
-Absolute positioning can be used as an alternative.
-
-This is because `FastImage` supplies a `android.widget.imageview` and not a `android.view.viewgroup`.
+A React Native style. Supports using `borderRadius`.
 
 ## Static Methods
 
@@ -157,39 +193,13 @@ FastImage.preload([
 ])
 ```
 
+## Troubleshooting
+
+If you have any problems using this library try the steps in [troubleshooting](docs/troubleshooting.md) and see if they fix it.
+
 ## Development
 
-```bash
-# Install SDWebImage submodules.
-git submodule update --init --recursive
-
-# Install npm dependencies.
-yarn
-```
-
-Developing modules for React Native is currently a mess because the packager does not support symlinks.
-
-Both major package managers, `npm@5` and `yarn`, do local installations by creating symlinks.
-
-Unfortunately for now the workaround to update the example is to run:
-
-```bash
-# In the repo directory pack the module:
-npm pack
-
-# This makes a tarball like:
-# react-native-fast-image-1.0.0.tgz
-
-# Move into the example:
-cd example
-
-# Install the tarball:
-npm install ../react-native-fast-image-1.0.0.tgz
-```
-
-To update while developing you can re-pack and reinstall the tarball. 
-
-Hopefully [metro](https://github.com/facebook/metro) will add support for symlinks soon.
+[Follow these instructions to get the example app running.](docs/development.md)
 
 ## Supported React Native Versions
 
@@ -208,6 +218,6 @@ It also uses Glide and SDWebImage, but didn't have some features I needed (prior
 
 ## Licenses
 
-* FastImage [MIT]
-* SDWebImage (included) [MIT]
-* Glide (included via gradle) [Apache 2.0 License]
+* FastImage - `MIT`
+* SDWebImage - `MIT`
+* Glide - `Apache-2.0`
