@@ -9,28 +9,62 @@ buildscript {
 
 apply plugin: 'com.android.library'
 
+def _ext = rootProject.ext
+
+def _reactNativeVersion = _ext.has('reactNative') ? _ext.reactNative : '+'
+def _compileSdkVersion = _ext.has('compileSdkVersion') ? _ext.compileSdkVersion : 23
+def _buildToolsVersion = _ext.has('buildToolsVersion') ? _ext.buildToolsVersion : '23.0.1'
+def _minSdkVersion = _ext.has('minSdkVersion') ? _ext.minSdkVersion : 16
+def _targetSdkVersion = _ext.has('targetSdkVersion') ? _ext.targetSdkVersion : 22
+def _glideVersion = _ext.has('glideVersion') ? _ext.glideVersion : '4.7.1'
+def _excludeAppGlideModule = _ext.has('excludeAppGlideModule') ? _ext.excludeAppGlideModule : false
+
 android {
-    compileSdkVersion 23
-    buildToolsVersion "23.0.1"
+    compileSdkVersion _compileSdkVersion
+    buildToolsVersion _buildToolsVersion
+
+    sourceSets {
+        main {
+            java {
+                if (_excludeAppGlideModule) {
+                    srcDir 'src'
+                    exclude '**/FastImageGlideModule.java'
+                }
+            }
+        }
+    }
 
     defaultConfig {
-        minSdkVersion 16
-        targetSdkVersion 22
+        minSdkVersion _minSdkVersion
+        targetSdkVersion _targetSdkVersion
         versionCode 1
         versionName "1.0"
-        lintOptions {
-            abortOnError false
-        }
+    }
+    lintOptions {
+        abortOnError false
     }
 }
 
 repositories {
     mavenCentral()
+    maven {
+        url "https://maven.google.com"
+    }
 }
 
 dependencies {
-    compile 'com.facebook.react:react-native:+'
-    compile group: 'com.github.bumptech.glide', name: 'glide', version: '3.8.0'
-    compile group: 'com.github.bumptech.glide', name: 'okhttp3-integration', version: '1.5.0'
-    compile 'com.android.support:support-v4:19.1.0'
+    //noinspection GradleDynamicVersion
+    compile "com.facebook.react:react-native:${_reactNativeVersion}"
+    compile "com.android.support:support-v4:${_compileSdkVersion}"
+    compile("com.github.bumptech.glide:glide:${_glideVersion}") {
+        exclude group: "com.android.support"
+    }
+    compile("com.github.bumptech.glide:annotations:${_glideVersion}") {
+        exclude group: "com.android.support"
+    }
+    annotationProcessor "com.github.bumptech.glide:compiler:${_glideVersion}"
+    compile("com.github.bumptech.glide:okhttp3-integration:${_glideVersion}") {
+        exclude group: "com.android.support"
+        exclude group: 'glide-parent'
+    }
 }

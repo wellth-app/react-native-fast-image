@@ -1,19 +1,15 @@
 package com.dylanvann.fastimage;
 
-import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
-import android.widget.ImageView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.Priority;
+import com.bumptech.glide.RequestManager;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.load.model.GlideUrl;
-import com.bumptech.glide.load.resource.drawable.GlideDrawable;
-import com.bumptech.glide.request.RequestListener;
-import com.bumptech.glide.request.target.ImageViewTarget;
-import com.bumptech.glide.request.target.Target;
+import com.bumptech.glide.request.RequestOptions;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableNativeMap;
@@ -24,31 +20,25 @@ import com.facebook.react.uimanager.annotations.ReactProp;
 import com.facebook.react.uimanager.events.RCTEventEmitter;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.WeakHashMap;
 import java.util.List;
 import java.util.Map;
 
 import javax.annotation.Nullable;
 
-class ImageViewWithUrl extends ImageView {
-    public GlideUrl glideUrl;
+import static com.dylanvann.fastimage.FastImageRequestListener.REACT_ON_ERROR_EVENT;
+import static com.dylanvann.fastimage.FastImageRequestListener.REACT_ON_LOAD_END_EVENT;
+import static com.dylanvann.fastimage.FastImageRequestListener.REACT_ON_LOAD_EVENT;
 
-    public ImageViewWithUrl(Context context) {
-        super(context);
-    }
-}
-
-class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implements ProgressListener {
+class FastImageViewManager extends SimpleViewManager<FastImageViewWithUrl> implements FastImageProgressListener {
 
     private static final String REACT_CLASS = "FastImageView";
     private static final String REACT_ON_LOAD_START_EVENT = "onFastImageLoadStart";
     private static final String REACT_ON_PROGRESS_EVENT = "onFastImageProgress";
-    private static final String REACT_ON_ERROR_EVENT = "onFastImageError";
-    private static final String REACT_ON_LOAD_EVENT = "onFastImageLoad";
-    private static final String REACT_ON_LOAD_END_EVENT = "onFastImageLoadEnd";
     private static final Drawable TRANSPARENT_DRAWABLE = new ColorDrawable(Color.TRANSPARENT);
-    private static final Map<String, List<ImageViewWithUrl>> VIEWS_FOR_URLS = new HashMap<>();
+    private static final Map<String, List<FastImageViewWithUrl>> VIEWS_FOR_URLS = new WeakHashMap<>();
+    private RequestManager requestManager = null;
 
     @Override
     public String getName() {
@@ -56,79 +46,18 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
     }
 
     @Override
-    protected ImageViewWithUrl createViewInstance(ThemedReactContext reactContext) {
-        return new ImageViewWithUrl(reactContext);
+    protected FastImageViewWithUrl createViewInstance(ThemedReactContext reactContext) {
+        requestManager = Glide.with(reactContext);
+        return new FastImageViewWithUrl(reactContext);
     }
-
-    private static boolean drawableListenerException(String uri, Target<GlideDrawable> target, Exception exception) {
-        OkHttpProgressGlideModule.forget(uri);
-        if (!(target instanceof ImageViewTarget)) {
-            return false;
-        }
-        ImageViewWithUrl view = (ImageViewWithUrl) ((ImageViewTarget) target).getView();
-        ThemedReactContext context = (ThemedReactContext) view.getContext();
-        RCTEventEmitter eventEmitter = context.getJSModule(RCTEventEmitter.class);
-        int viewId = view.getId();
-
-        WritableNativeMap errorMap = new WritableNativeMap();
-        errorMap.putString("uri", uri);
-        errorMap.putString("localizedMessage", exception.getLocalizedMessage());
-        errorMap.putString("message", exception.getMessage());
-        errorMap.putString("string", exception.toString());
-
-        eventEmitter.receiveEvent(viewId, REACT_ON_ERROR_EVENT, errorMap);
-        eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_END_EVENT, new WritableNativeMap());
-
-        return false;
-    }
-
-    private static boolean drawableListenerReady(Target<GlideDrawable> target) {
-        if (!(target instanceof ImageViewTarget)) {
-            return false;
-        }
-
-        ImageViewWithUrl view = (ImageViewWithUrl) ((ImageViewTarget) target).getView();
-        ThemedReactContext context = (ThemedReactContext) view.getContext();
-        RCTEventEmitter eventEmitter = context.getJSModule(RCTEventEmitter.class);
-
-        int viewId = view.getId();
-        eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_EVENT, new WritableNativeMap());
-        eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_END_EVENT, new WritableNativeMap());
-
-        return false;
-    }
-
-    private static RequestListener<GlideUrl, GlideDrawable> NetworkListener = new RequestListener<GlideUrl, GlideDrawable>() {
-        @Override
-        public boolean onException(Exception e, GlideUrl uri, Target<GlideDrawable> target, boolean isFirstResource) {
-            return drawableListenerException(uri.toStringUrl(), target, e);
-        }
-
-        @Override
-        public boolean onResourceReady(GlideDrawable resource, GlideUrl uri, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
-            return drawableListenerReady(target);
-        }
-    };
-
-    private static RequestListener<String, GlideDrawable> LocalPathListener = new RequestListener<String, GlideDrawable>() {
-        @Override
-        public boolean onException(Exception e, String model, Target<GlideDrawable> target, boolean isFirstResource) {
-            return drawableListenerException(model, target, e);
-        }
-
-        @Override
-        public boolean onResourceReady(GlideDrawable resource, String model, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
-            return drawableListenerReady(target);
-        }
-    };
 
     @ReactProp(name = "source")
-    public void setSrc(ImageViewWithUrl view, @Nullable ReadableMap source) {
+    public void setSrc(FastImageViewWithUrl view, @Nullable ReadableMap source) {
         if (source == null) {
             // Cancel existing requests.
-            Glide.clear(view);
+            requestManager.clear(view);
             if (view.glideUrl != null) {
-                OkHttpProgressGlideModule.forget(view.glideUrl.toStringUrl());
+                FastImageOkHttpProgressGlideModule.forget(view.glideUrl.toStringUrl());
             }
             // Clear the image.
             view.setImageDrawable(null);
@@ -142,19 +71,16 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
         // Get priority.
         final Priority priority = FastImageViewConverter.priority(source);
 
-        // Get the placeholder.
-        String placeholderPath = FastImageViewConverter.placeholder(source);
-
         // Cancel existing request.
-        Glide.clear(view);
+        requestManager.clear(view);
 
         String key = glideUrl.toStringUrl();
-        OkHttpProgressGlideModule.expect(key, this);
-        List<ImageViewWithUrl> viewsForKey = VIEWS_FOR_URLS.get(key);
+        FastImageOkHttpProgressGlideModule.expect(key, this);
+        List<FastImageViewWithUrl> viewsForKey = VIEWS_FOR_URLS.get(key);
         if (viewsForKey != null && !viewsForKey.contains(view)) {
             viewsForKey.add(view);
         } else if (viewsForKey == null) {
-            List<ImageViewWithUrl> newViewsForKeys = new ArrayList<ImageViewWithUrl>(Arrays.asList(view));
+            List<FastImageViewWithUrl> newViewsForKeys = new ArrayList<>(Collections.singletonList(view));
             VIEWS_FOR_URLS.put(key, newViewsForKeys);
         }
 
@@ -163,65 +89,37 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
         int viewId = view.getId();
         eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_START_EVENT, new WritableNativeMap());
 
-        if (placeholderPath != null && !placeholderPath.isEmpty()) {
-            loadPlaceholderInto(view, placeholderPath, glideUrl, priority, NetworkListener);
-        } else {
-            if (key.startsWith("http")) {
-                loadInto(view, glideUrl, priority, NetworkListener);
-            } else {
-                loadInto(view, key, priority, LocalPathListener);
-            }
-        }
-    }
+        RequestOptions options = new RequestOptions()
+                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                .priority(priority)
+                .dontTransform()
+                .placeholder(TRANSPARENT_DRAWABLE);
 
-    private <LocalModel, RemoteModel, Listener extends RequestListener<RemoteModel, GlideDrawable>> void loadPlaceholderInto(final ImageView view, final LocalModel localModel, final RemoteModel remoteModel, final Priority priority, final Listener listener) {
-        Glide
-            .with(view.getContext().getApplicationContext())
-            .load(localModel)
-            .dontTransform()
-            .priority(priority)
-            .diskCacheStrategy(DiskCacheStrategy.SOURCE)
-            .placeholder(TRANSPARENT_DRAWABLE)
-            .listener(new RequestListener<LocalModel, GlideDrawable>() {
-                @Override
-                public boolean onException(Exception e, LocalModel model, Target<GlideDrawable> target, boolean isFirstResource) {
-                    return false;
-                }
-
-                @Override
-                public boolean onResourceReady(GlideDrawable resource, LocalModel model, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
-                    loadInto(view, remoteModel, priority, listener);
-                    return false;
-                }
-            })
-            .into(view);
-    }
-
-    private <Model, Result, Listener extends RequestListener<Model, GlideDrawable>> void loadInto(ImageView view, Model model, Priority priority, Listener listener) {
-        Glide
-            .with(view.getContext().getApplicationContext())
-            .load(model)
-            .dontTransform()
-            .priority(priority)
-            .diskCacheStrategy(DiskCacheStrategy.SOURCE)
-            .placeholder(TRANSPARENT_DRAWABLE)
-            .listener(listener)
-            .into(view);
+        String stringUrl = glideUrl.toString();
+        requestManager
+                // This will make this work for remote and local images. e.g.
+                //    - file:///
+                //    - content://
+                //    - data:image/png;base64
+                .load(stringUrl.startsWith("http") ? glideUrl : stringUrl)
+                .apply(options)
+                .listener(new FastImageRequestListener(key))
+                .into(view);
     }
 
     @ReactProp(name = "resizeMode")
-    public void setResizeMode(ImageViewWithUrl view, String resizeMode) {
-        final ImageViewWithUrl.ScaleType scaleType = FastImageViewConverter.scaleType(resizeMode);
+    public void setResizeMode(FastImageViewWithUrl view, String resizeMode) {
+        final FastImageViewWithUrl.ScaleType scaleType = FastImageViewConverter.scaleType(resizeMode);
         view.setScaleType(scaleType);
     }
 
     @Override
-    public void onDropViewInstance(ImageViewWithUrl view) {
+    public void onDropViewInstance(FastImageViewWithUrl view) {
         // This will cancel existing requests.
-        Glide.clear(view);
+        requestManager.clear(view);
         final String key = view.glideUrl.toString();
-        OkHttpProgressGlideModule.forget(key);
-        List<ImageViewWithUrl> viewsForKey = VIEWS_FOR_URLS.get(key);
+        FastImageOkHttpProgressGlideModule.forget(key);
+        List<FastImageViewWithUrl> viewsForKey = VIEWS_FOR_URLS.get(key);
         if (viewsForKey != null) {
             viewsForKey.remove(view);
             if (viewsForKey.size() == 0) VIEWS_FOR_URLS.remove(key);
@@ -248,9 +146,9 @@ class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implement
 
     @Override
     public void onProgress(String key, long bytesRead, long expectedLength) {
-        List<ImageViewWithUrl> viewsForKey = VIEWS_FOR_URLS.get(key);
+        List<FastImageViewWithUrl> viewsForKey = VIEWS_FOR_URLS.get(key);
         if (viewsForKey != null) {
-            for (ImageViewWithUrl view: viewsForKey) {
+            for (FastImageViewWithUrl view : viewsForKey) {
                 WritableMap event = new WritableNativeMap();
                 event.putInt("loaded", (int) bytesRead);
                 event.putInt("total", (int) expectedLength);
