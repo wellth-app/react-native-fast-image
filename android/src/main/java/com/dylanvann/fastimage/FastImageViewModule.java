@@ -1,20 +1,19 @@
 package com.dylanvann.fastimage;
 
 import android.app.Activity;
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
+import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
+import android.util.Log;
 
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.Priority;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.load.model.GlideUrl;
-import com.bumptech.glide.request.RequestOptions;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
+import com.squareup.picasso.Picasso;
+import com.squareup.picasso.Target;
+
+import java.io.File;
 
 class FastImageViewModule extends ReactContextBaseJavaModule {
 
@@ -29,32 +28,25 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
         return REACT_CLASS;
     }
 
-    private static Drawable TRANSPARENT_DRAWABLE = new ColorDrawable(Color.TRANSPARENT);
-
     @ReactMethod
     public void preload(final ReadableArray sources) {
         final Activity activity = getCurrentActivity();
-        if (activity == null) return;
         activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 for (int i = 0; i < sources.size(); i++) {
                     final ReadableMap source = sources.getMap(i);
-                    final GlideUrl glideUrl = FastImageViewConverter.glideUrl(source);
-                    final Priority priority = FastImageViewConverter.priority(source);
-
-                    RequestOptions options = new RequestOptions()
-                            .placeholder(TRANSPARENT_DRAWABLE)
-                            .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
-                            .priority(priority);
-
-                    Glide
-                            .with(activity.getApplicationContext())
-                            .applyDefaultRequestOptions(options)
-                            .load(glideUrl)
-                            .preload();
+                    final String url = FastImageViewConverter.getURL(source);
+                    Picasso.with(activity.getApplicationContext()).load(url).fetch();
                 }
             }
         });
+    }
+
+    @ReactMethod
+    public void setImage(String localPath, String cacheKey) {
+        final Activity activity = getCurrentActivity();
+        final File fileHandle = new File(localPath);
+        Picasso.with(activity.getApplicationContext()).load(fileHandle).stableKey(cacheKey).fetch();
     }
 }
