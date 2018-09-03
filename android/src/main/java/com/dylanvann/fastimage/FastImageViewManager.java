@@ -6,7 +6,6 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.util.Log;
 import android.widget.ImageView;
 
 import com.facebook.react.bridge.ReadableMap;
@@ -37,7 +36,7 @@ class ImageViewWithUrl extends ImageView {
     }
 }
 
-class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implements ProgressListener {
+class FastImageViewManager extends SimpleViewManager<ImageViewWithUrl> implements FastImageProgressListener {
 
     private static final String REACT_CLASS = "FastImageView";
     private static final String REACT_ON_LOAD_START_EVENT = "onFastImageLoadStart";
