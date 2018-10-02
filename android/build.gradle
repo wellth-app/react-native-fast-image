@@ -42,6 +42,6 @@ repositories {
 dependencies {
     //noinspection GradleDynamicVersion
     compile "com.facebook.react:react-native:${_reactNativeVersion}"
-    compile "com.android.support:support-v4:${_compileSdkVersion}"
+    compile "com.android.support:support-v4:27.1.1"
     compile "com.squareup.picasso:picasso:2.5.2"
 }
