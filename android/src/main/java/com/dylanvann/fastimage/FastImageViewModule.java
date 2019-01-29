@@ -47,6 +47,11 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
     public void setImage(String localPath, String cacheKey) {
         final Activity activity = getCurrentActivity();
         final File fileHandle = new File(localPath);
-        Picasso.with(activity.getApplicationContext()).load(fileHandle).stableKey(cacheKey).fetch();
+
+        // Check to make sure the activity actually exists (it might have been 
+        // recycled...etc) so that we don't throw an error and crash
+        if (activity != null) {
+            Picasso.with(activity.getApplicationContext()).load(fileHandle).stableKey(cacheKey).fetch();
+        }
     }
 }
